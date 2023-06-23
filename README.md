@@ -29,6 +29,14 @@ A aplicação adota a arquitetura cliente-servidor. O componente de publicação
 
 A aplicação utiliza a camada de middleware RPC (Remote Procedure Call) para a comunicação entre cliente e servidor. O protocolo RPyC (Remote Python Call) é utilizado para facilitar a chamada remota de métodos entre os componentes cliente e servidor.
 
+## Configuração e Execução
+
+### Pré-requisitos
+
+Certifique-se de ter os seguintes requisitos instalados no seu sistema:
+
+- Python 3.x
+  
 ### Instalação
 
 Siga as etapas abaixo para executar o sistema de anúncios distribuídos:
