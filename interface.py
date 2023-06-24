@@ -1,19 +1,11 @@
 from __future__ import annotations
 
-from typing import Callable, Optional, Tuple, TypeAlias
+from typing import Callable, TypeAlias
 from dataclasses import dataclass
 
 import rpyc # type: ignore
 
-UserId: TypeAlias = int
-
-# Isso é para ser tipo uma struct
-# Frozen diz que os campos são read-only
-@dataclass(frozen=True, kw_only=True, slots=True)
-class UserInfo:
-    user_id: UserId
-    user_name: str
-
+UserId: TypeAlias = str
 Topic: TypeAlias = str
 
 # Isso é para ser tipo uma struct
@@ -24,15 +16,13 @@ class Content:
     topic: Topic
     data: str
 
-# Aqui pode ser uma função que recebe apenas um Tuple[Topic, Content]
-# ou seja:
-# FnNotify: TypeAlias = Callable[[Tuple[Topic, Content]], None]
-FnNotify: TypeAlias = Callable[[list[Tuple[Topic, Content]]], None]
+FnNotify: TypeAlias = Callable[[list[Content]], None]
 
 class BrokerService(rpyc.Service): # type: ignore
     def __init__(self):
         self.topics = {}
         self.subscribers = {}
+        self.users = []
 
     # Não é exposed porque só o "admin" tem acesso
     def create_topic(self, id: UserId, topicname: str) -> Topic:
@@ -43,14 +33,13 @@ class BrokerService(rpyc.Service): # type: ignore
 
     # Handshake
 
-    def exposed_login(self, username: str)-> bool:
+    def exposed_login(self, id: UserId, callback: FnNotify) -> bool:
         # Verificar se o usuário já está logado
-        for user_id, user_info in self.users.items():
-            if user_info.user_name == username:
-                return False
+        if id in self.users:
+            return False
         # Gerar um novo ID de usuário
         new_user_id = max(self.users.keys(), default=0) + 1
-        self.users[new_user_id] = UserInfo(new_user_id, username)
+        self.users.append(new_user_id)
         return True
 
     def exposed_list_topics(self) -> list[Topic]:
@@ -88,11 +77,11 @@ class BrokerService(rpyc.Service): # type: ignore
     def exposed_unsubscribe_to(self, id: UserId, topic: Topic) -> bool:
         # Verificar se o tópico existe
         if topic not in self.topics:
-            return False
+            return True
         # Remover o usuário dos inscritos
         subscribers = self.topics[topic]
         for i, (subscriber_id, callback) in enumerate(subscribers):
             if subscriber_id == id:
                 subscribers.pop(i)[1]
                 return True
-        return True
+        return False
