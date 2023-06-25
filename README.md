@@ -22,8 +22,8 @@ A aplicação segue o estilo arquitetural *publish-subscribe*. Os anúncios são
 
 A aplicação adota a arquitetura cliente-servidor. O componente de publicação e registro de interesse fica no lado do cliente, enquanto o componente de gerente de anúncios fica no lado do servidor. Existem duas alternativas para a arquitetura de vários servidores:
 
-1. Subscrição enviada para todos os servidores e publicação enviada para apenas um deles.
-2. Subscrição enviada para apenas um servidor e publicação enviada para todos.
+1. Inscrição enviada para todos os servidores e publicação enviada para apenas um deles.
+2. Inscrição enviada para apenas um servidor e publicação enviada para todos.
 
 ## Protocolo de Camada de Aplicação
 
