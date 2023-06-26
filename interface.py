@@ -40,6 +40,14 @@ class BrokerService(rpyc.Service): # type: ignore
         # Salva o id do usuário associado à sua função de callback
         self.users[id] = callback
         return True
+    
+    def exposed_logout(self, id: UserId) -> bool:
+        # Verificar se o usuário está logado
+        if id in self.users:
+            del self.users[id]
+            return True
+        return False
+
 
     def exposed_list_topics(self) -> list[Topic]:
         return list(self.topics.keys())
