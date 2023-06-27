@@ -1,16 +1,16 @@
 import rpyc
-import uuid
 
 HOST = 'localhost'
 PORT = 5003
 
 class Publisher:
     def __init__(self):
-        self.id = str(uuid.uuid4())
+        self.id = None
         self.conn = rpyc.connect(HOST, PORT)
         self.broker = self.conn.root
 
     def login(self):
+        self.id = input("Digite o seu login: ")
         success = self.broker.login(self.id, self.callback)
         if success:
             print(f"Usuário {self.id} logado com sucesso.")
