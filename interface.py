@@ -1,94 +1,154 @@
-from __future__ import annotations
+import rpyc
+import threading
+import json
+import argparse
+import sys
 
-from typing import Callable, TypeAlias
-from dataclasses import dataclass
+PORT = 5003
+HOST = 'localhost'
 
-import rpyc # type: ignore
+UserId = str
+Topic = str
 
-UserId: TypeAlias = str
-Topic: TypeAlias = str
 
-# Isso é para ser tipo uma struct
-# Frozen diz que os campos são read-only
-@dataclass(frozen=True, kw_only=True, slots=True)
 class Content:
-    author: UserId
-    topic: Topic
-    data: str
+    def __init__(self, author, topic, data):
+        self.author = author
+        self.topic = topic
+        self.data = data
 
-FnNotify: TypeAlias = Callable[[list[Content]], None]
 
-class BrokerService(rpyc.Service): # type: ignore
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if callable(obj):
+            return None
+        return super().default(obj)
+
+
+class BrokerService(rpyc.Service):
     def __init__(self):
         self.topics = {}
         self.subscribers = {}
         self.users = {}
+        self.lock = threading.Lock()
+        self.load_state_from_file()
 
-    # Não é exposed porque só o "admin" tem acesso
-    def create_topic(self, id: UserId, topicname: str) -> Topic:
-        if topicname in self.topics:
-            raise ValueError(f"The topic '{topicname}' already exists.")
-        self.topics[topicname] = []
-        return topicname
+    def load_state_from_file(self):
+        try:
+            with open('data.json', 'r') as file:
+                data = json.load(file)
+                self.users = data.get('users', {})
+                self.topics = data.get('topics', {})
+        except FileNotFoundError:
+            pass
 
-    # Handshake
+    def save_state_to_file(self):
+        data = {
+            'users': self.users,
+            'topics': self.topics
+        }
+        with open('data.json', 'w') as file:
+            json.dump(data, file, cls=CustomEncoder)
 
-    def exposed_login(self, id: UserId, callback: FnNotify) -> bool:
-        # Verificar se o usuário já está logado
-        if id in self.users: # TODO: Verificar na lista de usuários logados
-            return False
-        # Salva o id do usuário associado à sua função de callback
-        self.users[id] = callback
+    def threaded_notify(self, topic, content):
+        subscribers = self.topics.get(topic, {})
+        for subscriber_id, callback in subscribers.items():
+            if subscriber_id != content.author:
+                callback([content])
+
+    def exposed_login(self, id, callback):
+        with self.lock:
+            if id in self.users:
+                return False
+            self.users[id] = callback
+            self.save_state_to_file()
         return True
-    
-    def exposed_logout(self, id: UserId) -> bool:
-        # Verificar se o usuário está logado
-        if id in self.users:
-            del self.users[id]
-            return True
+
+    def exposed_logout(self, id):
+        with self.lock:
+            if id in self.users:
+                del self.users[id]
+                self.save_state_to_file()
+                return True
         return False
 
-
-    def exposed_list_topics(self) -> list[Topic]:
+    def exposed_list_topics(self):
         return list(self.topics.keys())
 
-    # Publisher operations
-
-    def exposed_publish(self, id: UserId, topic: Topic, data: str) -> bool:
-        # Verificar se o tópico existe
+    def exposed_publish(self, id, topic, data):
         if topic not in self.topics:
             return False
-        # Criar o conteúdo do anúncio
         content = Content(id, topic, data)
-        # Notificar todos os inscritos no tópico
-        subscribers = self.topics[topic]
-        for callback in subscribers.values(): # assumindo que subscribers é um dict {UserId: FnNotify}
-            callback([content])  # TODO: entrega a posteriori (quando o user nao esta online)
+        with self.lock:
+            threading.Thread(target=self.threaded_notify, args=(topic, content)).start()
+            self.save_state_to_file()
         return True
 
-    # Subscriber operations
-
-    def exposed_subscribe_to(self, id: UserId, topic: Topic) -> bool:
-        # Verificar se o tópico existe
+    def exposed_subscribe_to(self, id, topic):
         if topic not in self.topics:
             return False
-        # Verificar se o usuário já está inscrito no tópico
         if id in self.topics[topic]:
-            return True  # TODO: Confirmar o retorno. Pelo que lembro é True quando já está inscrito.
-        # TODO: Verificar se o usuário existe? Ou ele só vai usar esse método se já estiver logado?
-        # Recuperar a função de callback do usuário
+            return True
         callback = self.users[id]
-        # Adicionar o usuário aos inscritos
-        self.topics[topic][id] = callback
+        with self.lock:
+            self.topics.setdefault(topic, {})
+            self.topics[topic][id] = callback
+            threading.Thread(target=self.threaded_notify, args=(topic, None)).start()
+            self.save_state_to_file()
         return True
 
-    def exposed_unsubscribe_to(self, id: UserId, topic: Topic) -> bool:
-        # Verificar se o tópico existe
+    def exposed_unsubscribe_to(self, id, topic):
         if topic not in self.topics:
             return True
-        # Verificar se o usuário está inscrito no tópico
         if id not in self.topics[topic]:
             return True
-        # Remover o usuário dos inscritos
-        del self.topics[topic][id]
+        with self.lock:
+            del self.topics[topic][id]
+            self.save_state_to_file()
         return True
+
+
+    def create_topic(self, topic: Topic) -> bool:
+        with self.lock:
+            if topic in self.topics:
+                return False
+            self.topics[topic] = {}
+            self.save_state_to_file()
+            self.notify_publishers(topic)  # Notifica os publishers sobre a criação do novo tópico
+        return True
+
+    def exposed_create_topic(self, topic: Topic) -> bool:
+        return self.create_topic(topic)
+
+    def notify_publishers(self, topic: Topic):
+        subscribers = list(self.topics.get(topic, {}).keys())
+        for subscriber in subscribers:
+            callback = self.users.get(subscriber)
+            threading.Thread(target=callback, args=(topic,)).start()
+
+
+def start_server():
+    broker = BrokerService()
+    server = rpyc.ThreadedServer(broker, port=PORT, hostname=HOST)
+    server.start()
+
+
+def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--create-topic':
+        if len(sys.argv) > 2:
+            topic = sys.argv[2]
+            conn = rpyc.connect(HOST, PORT)
+            success = conn.root.exposed_create_topic(topic)
+            conn.close()
+            if success:
+                print(f"Tópico '{topic}' criado com sucesso.")
+            else:
+                print(f"O tópico '{topic}' já existe.")
+        else:
+            print("Por favor, forneça o nome do tópico a ser criado.")
+    else:
+        start_server()
+
+
+if __name__ == '__main__':
+    main()

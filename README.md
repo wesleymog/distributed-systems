@@ -35,7 +35,7 @@ A aplicação utiliza a camada de middleware RPC (Remote Procedure Call) para a 
 
 Certifique-se de ter os seguintes requisitos instalados no seu sistema:
 
-- Python 3.x
+- Python 3.10 or higher
   
 ### Instalação
 
