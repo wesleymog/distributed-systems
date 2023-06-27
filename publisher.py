@@ -31,6 +31,20 @@ class Publisher:
         else:
             print(f"Tópico {topic} não existe.")
 
+    def subscribe(self, topic):
+        success = self.broker.subscribe_to(self.id, topic)
+        if success:
+            print(f"Inscrição realizada no tópico {topic}.")
+        else:
+            print(f"Não foi possível se inscrever no tópico {topic}.")
+
+    def unsubscribe(self, topic):
+        success = self.broker.unsubscribe_to(self.id, topic)
+        if success:
+            print(f"Inscrição removida do tópico {topic}.")
+        else:
+            print(f"Não foi possível cancelar a inscrição do tópico {topic}.")
+
     def callback(self, content):
         print("Lista de conteúdos:")
         for item in content:
@@ -39,7 +53,9 @@ class Publisher:
     def menu(self):
         menu = ("Escolha uma opção.\n"
                 "1. Digite 'publicar' para publicar um tópico\n"
-                "2. Digite 'fim' para encerrar")
+                "2. Digite 'inscrever' para se inscrever em um tópico\n"
+                "3. Digite 'cancelar' para cancelar a inscrição em um tópico\n"
+                "4. Digite 'fim' para encerrar")
         print(menu)
 
     def main(self):
@@ -51,6 +67,12 @@ class Publisher:
                 topic = input("Digite o nome do tópico: ")
                 data = input("Digite o conteúdo do tópico: ")
                 self.publish(topic, data)
+            elif option == "inscrever":
+                topic = input("Digite o nome do tópico para se inscrever: ")
+                self.subscribe(topic)
+            elif option == "cancelar":
+                topic = input("Digite o nome do tópico para cancelar a inscrição: ")
+                self.unsubscribe(topic)
             elif option == "fim":
                 self.conn.close()
                 break
