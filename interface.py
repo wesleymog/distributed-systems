@@ -93,19 +93,17 @@ class BrokerService(rpyc.Service):
         with self.lock:
             self.topics.setdefault(topic, {})
             self.topics[topic][id] = callback
-            threading.Thread(target=self.threaded_notify, args=(topic, None)).start()
             self.save_state_to_file()
+            self.notify_subscribers(topic, created=True)
         return True
 
     def exposed_unsubscribe_to(self, id, topic):
-        if topic not in self.topics:
-            return True
-        if id not in self.topics[topic]:
-            return True
-        with self.lock:
+        if topic in self.topics and id in self.topics[topic]:
             del self.topics[topic][id]
-            self.save_state_to_file()
-        return True
+            self.notify_subscribers(topic, created=False)
+            self.save_state_to_file()  # Adiciona a chamada para salvar as alterações no arquivo JSON
+            return True
+        return False
 
 
     def create_topic(self, topic: Topic) -> bool:
@@ -120,12 +118,13 @@ class BrokerService(rpyc.Service):
     def exposed_create_topic(self, topic: Topic) -> bool:
         return self.create_topic(topic)
 
-    def notify_publishers(self, topic: Topic):
-        subscribers = list(self.topics.get(topic, {}).keys())
-        for subscriber in subscribers:
-            callback = self.users.get(subscriber)
-            threading.Thread(target=callback, args=(topic,)).start()
-
+    def notify_subscribers(self, topic, created=True):
+        if created:
+            message = f"Novo tópico criado: {topic}"
+        else:
+            message = f"Tópico atualizado: {topic}"
+        for callback in self.topics[topic].values():
+            threading.Thread(target=callback, args=(message,)).start()
 
 def start_server():
     broker = BrokerService()
