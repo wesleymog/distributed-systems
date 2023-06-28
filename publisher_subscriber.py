@@ -1,52 +1,57 @@
-from typing import List
-from dataclasses import dataclass
-
 import rpyc
-
-UserId = str
-Topic = str
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class Content:
-    author: UserId
-    topic: Topic
-    data: str
+import json
+from broker import BrokerService, Content, Topic, UserId
 
 class PublisherSubscriberService:
-
     def __init__(self):
-        self.connection = rpyc.connect("localhost", 18861)  # Update host and port if necessary
+        self.conn = rpyc.connect("localhost", 18861)
+        self.user_id = None
 
-    def create_topic(self, id: UserId, topicname: str) -> Topic:
-        return self.connection.root.create_topic(id, topicname)
+    def login(self, user_id: UserId) -> bool:
+        self.user_id = user_id
+        return self.conn.root.login(user_id, self.callback)
 
-    def login(self, id: UserId, callback) -> bool:
-        return self.connection.root.login(id, callback)
+    def create_topic(self, topic_name: str) -> Topic:
+        return self.conn.root.create_topic(self.user_id, topic_name)
 
-    def list_topics(self) -> List[Topic]:
-        return self.connection.root.list_topics()
+    def list_topics(self) -> list[Topic]:
+        return self.conn.root.list_topics()
 
-    def publish(self, id: UserId, topic: Topic, data: str) -> bool:
-        return self.connection.root.publish(id, topic, data)
+    def publish(self, topic: Topic, data: str) -> bool:
+        return self.conn.root.publish(self.user_id, topic, data)
 
-    def subscribe_to(self, id: UserId, topic: Topic) -> bool:
-        return self.connection.root.subscribe_to(id, topic)
+    def subscribe_to(self, topic: Topic) -> bool:
+        return self.conn.root.subscribe_to(self.user_id, topic)
 
-    def unsubscribe_to(self, id: UserId, topic: Topic) -> bool:
-        return self.connection.root.unsubscribe_to(id, topic)
+    def unsubscribe_to(self, topic: Topic) -> bool:
+        return self.conn.root.unsubscribe_to(self.user_id, topic)
 
-def notify_callback(contents: List[Content]):
-    for content in contents:
-        print(f"New notification: {content.data}")
+    def callback(self, contents: list[str]) -> None:
+        print(f"New contents in topic: {contents}")
 
-def main():
-    service = PublisherSubscriberService()
-    service.login("user1", notify_callback)
-    service.create_topic("user1", "topic1")
-    service.subscribe_to("user1", "user1.topic1")
-
-    service.publish("user1", "user1.topic1", "Hello, World!")
-    service.publish("user2", "user1.topic1", "Hi, user1!")
+        for content in contents:
+            content_new = json.loads(content)
+            print(content_new.get('author'))
+            print(f"Um novo item publicado no tópico {content_new.get('topic')} por {content_new.get('author')}: {content_new.get('data')}")
 
 if __name__ == "__main__":
-    main()
+    service = PublisherSubscriberService()
+    user_id = "user1"  # Replace with your user ID
+    service.login(user_id)
+
+    topic_name = "News"  # Replace with the desired topic name
+    service.create_topic(topic_name)
+
+    topics = service.list_topics()
+    print(f"Topics: {topics}")
+
+    topic = topics[0]
+    service.subscribe_to(topic)
+
+    data = "New article!"
+    service.publish(topic, data)
+
+    # Unsubscribe from the topic
+    service.unsubscribe_to(topic)
+
+    service.conn.close()

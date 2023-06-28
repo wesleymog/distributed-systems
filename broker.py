@@ -1,10 +1,10 @@
-from typing import List
+from __future__ import annotations
+from typing import Callable, TypeAlias
 from dataclasses import dataclass
-
 import rpyc
 
-UserId = str
-Topic = str
+UserId: TypeAlias = str
+Topic: TypeAlias = str
 
 @dataclass(frozen=True, kw_only=True, slots=True)
 class Content:
@@ -12,64 +12,66 @@ class Content:
     topic: Topic
     data: str
 
-class BrokerService(rpyc.Service):
-    def __init__(self):
-        self.topics = {}
-        self.subscribers = {}
+infos = {
+    "users": [],
+    "topics": [],
+    "topic_subscribers": [],
+    "users_logged": {},
+}
 
-    def create_topic(self, id: UserId, topicname: str) -> Topic:
-        topic = f"{id}.{topicname}"
-        self.topics[topic] = []
+FnNotify: TypeAlias = Callable[[list[Content]], None]
+
+class BrokerService(rpyc.Service):
+    def exposed_create_topic(self, id: UserId, topicname: str) -> Topic:
+        topic = Topic(topicname)
+        infos["topics"].append({
+            "id": topic,
+            "contents": [],
+            "users_subscribed": []
+        })
         return topic
 
-    def exposed_login(self, id: UserId, callback) -> bool:
-        self.subscribers[id] = callback
+    def exposed_login(self, id: UserId, callback: FnNotify) -> bool:
+        infos["users_logged"][id] = callback
         return True
 
-    def exposed_list_topics(self) -> List[Topic]:
-        return list(self.topics.keys())
+    def exposed_list_topics(self) -> list[Topic]:
+        return [topic["id"] for topic in infos["topics"]]
 
     def exposed_publish(self, id: UserId, topic: Topic, data: str) -> bool:
-        if topic not in self.topics:
+        topic_info = next((t for t in infos["topics"] if t["id"] == topic), None)
+        if not topic_info:
             return False
-
         content = Content(author=id, topic=topic, data=data)
-        self.topics[topic].append(content)
+        topic_info["contents"].append(content)
 
-        for subscriber_id, subscriber_callback in self.subscribers.items():
-            if subscriber_id != id and self.exposed_subscribe_to(subscriber_id, topic):
-                subscriber_callback([content])
-
+        subscribers = [s for s in topic_info["users_subscribed"]]
+        print(topic_info)
+        if subscribers:
+            notify_callback = infos["users_logged"].get(id)
+            if notify_callback:
+                notify_callback(['{"author": "'+content.author+'", "topic": "'+content.topic+'", "data": "'+content.data+'"}'])
         return True
 
     def exposed_subscribe_to(self, id: UserId, topic: Topic) -> bool:
-        if topic not in self.topics:
+        topic_info = next((t for t in infos["topics"] if t["id"] == topic), None)
+        if not topic_info:
             return False
-
-        subscriber_topics = self.subscribers.get(id, [])
-        if topic not in subscriber_topics:
-            subscriber_topics.append(topic)
-            self.subscribers[id] = subscriber_topics
-
+        if id not in topic_info["users_subscribed"]:
+            topic_info["users_subscribed"].append(id)
         return True
 
     def exposed_unsubscribe_to(self, id: UserId, topic: Topic) -> bool:
-        if topic not in self.topics:
+        topic_info = next((t for t in infos["topics"] if t["id"] == topic), None)
+        if not topic_info:
             return False
-
-        subscriber_topics = self.subscribers.get(id, [])
-        if topic in subscriber_topics:
-            subscriber_topics.remove(topic)
-            self.subscribers[id] = subscriber_topics
-
+        if id in topic_info["users_subscribed"]:
+            topic_info["users_subscribed"].remove(id)
         return True
 
-@staticmethod
-def create_topic_service(service: BrokerService, id: UserId, topicname: str) -> Topic:
-    return service.create_topic(id, topicname)
 
 if __name__ == "__main__":
     from rpyc.utils.server import ThreadedServer
-
-    server = ThreadedServer(BrokerService, port=18861)  # Update port if necessary
+    server = ThreadedServer(BrokerService, port=18861)
     server.start()
+
