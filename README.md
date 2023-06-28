@@ -9,6 +9,7 @@ Um usuário pode realizar as seguintes ações:
 1. Criar e publicar anúncios.
 2. Registrar interesse em anúncios e receber notificações.
 3. Cancelar o registro de interesse em anúncios e deixar de receber notificações.
+4. Ao mesmo tempo em que ele cria uma nova notificação ele pode e deve ser notificado se alguém publicar um anúncio que ele tem interesse.
 
 ## Arquitetura de Software
 
