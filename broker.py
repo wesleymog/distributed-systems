@@ -1,6 +1,7 @@
 from type_checking import UserId, Topic, Content, FnNotify
 from rpyc.utils.server import ThreadedServer
 import rpyc
+import json
 
 infos = {
     "users": [],
@@ -18,6 +19,8 @@ class BrokerService(rpyc.Service):
             "users_subscribed": []
         })
         return topic
+    def exposed_create_topic(self, id: UserId, topicname: str) -> Topic:
+        return self.create_topic(id, topicname)
 
     def exposed_login(self, id: UserId, callback: FnNotify) -> bool:
         if id in infos["users_logged"].values():
@@ -34,7 +37,7 @@ class BrokerService(rpyc.Service):
     def exposed_list_topics(self) -> list[Topic]:
         return [topic["id"] for topic in infos["topics"]]
 
-    def exposed_publish(self, id: UserId, topic: Topic, data: str) -> bool:
+    def exposed_publish(self, id: UserId, topic: Topic, data: str) -> bool: 
         topic_info = next((t for t in infos["topics"] if t["id"] == topic), None)
         if not topic_info:
             return False
@@ -42,11 +45,13 @@ class BrokerService(rpyc.Service):
         topic_info["contents"].append(content)
 
         subscribers = [s for s in topic_info["users_subscribed"]]
-        print(topic_info)
         if subscribers:
-            notify_callback = infos["users_logged"].get(id)
-            if notify_callback:
-                notify_callback(['{"author": "'+content.author+'", "topic": "'+content.topic+'", "data": "'+content.data+'"}'])
+            for subscriber in subscribers:
+                notify_callback = infos["users_logged"].get(str(subscriber))
+                if notify_callback:
+                    message = {"author": content.author, "topic": content.topic, "data": content.data}
+                    message_json = json.dumps(message)
+                    notify_callback(message_json)
         return True
 
     def exposed_subscribe_to(self, id: UserId, topic: Topic) -> bool:
@@ -67,5 +72,5 @@ class BrokerService(rpyc.Service):
 
 
 if __name__ == "__main__":
-    server = ThreadedServer(BrokerService, port=18861)
+    server = ThreadedServer(BrokerService, port=18861, protocol_config={'allow_public_attrs': True})
     server.start()

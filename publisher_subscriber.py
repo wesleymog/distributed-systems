@@ -4,7 +4,11 @@ from broker import Topic, UserId
 
 class PublisherSubscriberService:
     def __init__(self):
-        self.conn = rpyc.connect("localhost", 18861)
+        global bgsrv 
+        self.id = None 
+        self.conn = rpyc.connect("localhost", 18861) 
+        bgsrv = rpyc.BgServingThread(self.conn) 
+        self.broker = self.conn.root
 
     def login(self):
         self.user_id = input("Digite o seu login: ")
@@ -49,14 +53,9 @@ class PublisherSubscriberService:
         else:
             print(f"Não foi possível cancelar a inscrição do tópico {topic}.")
 
-    def callback(self, contents: list[str]) -> None:
-        print(f"New contents in topic: {contents}")
-
-        for content in contents:
-            content_new = json.loads(content)
-            print(content_new.get('author'))
-            print(f"Um novo item publicado no tópico {content_new.get('topic')} por {content_new.get('author')}: {content_new.get('data')}")
-
+    def callback(self, message):
+        message_dict = json.loads(message)
+        print(f"Received message: {message_dict}")
     def menu(self):
         menu = ("Escolha uma opção.\n"
                 "1. Digite 'publicar' para publicar um tópico\n"
@@ -69,7 +68,9 @@ class PublisherSubscriberService:
         while True:
             self.menu()
             option = input().strip()
-
+            if option == "criar":
+                topic_name = input("Digite o nome do tópico: ")
+                self.create_topic(topic_name)
             if option == "publicar":
                 topic = input("Digite o nome do tópico: ")
                 data = input("Digite o conteúdo do tópico: ")
