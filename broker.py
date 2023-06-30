@@ -20,8 +20,16 @@ class BrokerService(rpyc.Service):
         return topic
 
     def exposed_login(self, id: UserId, callback: FnNotify) -> bool:
+        if id in infos["users_logged"].values():
+            return False
         infos["users_logged"][id] = callback
         return True
+
+    def exposed_logout(self, id: UserId) -> bool:
+        if id in infos["users_logged"].values():
+            del infos["users_logged"][id]
+            return True
+        return False
 
     def exposed_list_topics(self) -> list[Topic]:
         return [topic["id"] for topic in infos["topics"]]
