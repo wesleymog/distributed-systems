@@ -1,16 +1,6 @@
-from __future__ import annotations
-from typing import Callable, TypeAlias
-from dataclasses import dataclass
+from type_checking import UserId, Topic, Content, FnNotify
+from rpyc.utils.server import ThreadedServer
 import rpyc
-
-UserId: TypeAlias = str
-Topic: TypeAlias = str
-
-@dataclass(frozen=True, kw_only=True, slots=True)
-class Content:
-    author: UserId
-    topic: Topic
-    data: str
 
 infos = {
     "users": [],
@@ -18,8 +8,6 @@ infos = {
     "topic_subscribers": [],
     "users_logged": {},
 }
-
-FnNotify: TypeAlias = Callable[[list[Content]], None]
 
 class BrokerService(rpyc.Service):
     def exposed_create_topic(self, id: UserId, topicname: str) -> Topic:
@@ -71,7 +59,5 @@ class BrokerService(rpyc.Service):
 
 
 if __name__ == "__main__":
-    from rpyc.utils.server import ThreadedServer
     server = ThreadedServer(BrokerService, port=18861)
     server.start()
-
