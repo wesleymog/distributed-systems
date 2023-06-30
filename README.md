@@ -21,14 +21,21 @@ A aplicação segue o estilo arquitetural *publish-subscribe*. Os anúncios são
 
 ## Arquitetura de Sistema
 
-A aplicação adota a arquitetura cliente-servidor. O componente de publicação e registro de interesse fica no lado do cliente, enquanto o componente de gerente de anúncios fica no lado do servidor. Existem duas alternativas para a arquitetura de vários servidores:
-
-1. Inscrição enviada para todos os servidores e publicação enviada para apenas um deles.
-2. Inscrição enviada para apenas um servidor e publicação enviada para todos.
+A aplicação adota a arquitetura cliente-servidor. O componente de publicação e registro de interesse fica no lado do cliente, enquanto o componente de gerente de anúncios fica no lado do servidor. Ficou decidido em conjunto que o funcionamento consistiria em um único servidor atendendo múltiplos clientes.
 
 ## Protocolo de Camada de Aplicação
 
 A aplicação utiliza a camada de middleware RPC (Remote Procedure Call) para a comunicação entre cliente e servidor. O protocolo RPyC (Remote Python Call) é utilizado para facilitar a chamada remota de métodos entre os componentes cliente e servidor.
+
+## Decisões de Implementação
+As principais questões que nos deparamos foram:
+* Fazer persistência ou não?
+
+    Para poder serializar os métodos de callback seria necessário utilizar outro formato no lugar do JSON, como o arquivos pickle. No entanto, para evitar aumentar a complexidade, decidimos que o PubSub funcionaria apenas de maneira dinâmica, enquanto o servidor estiver ativo (de maneira análoga a uma memória RAM). Na prática, devido à assincronicidade das interações entre inscritos e publicadores, acreditamos que o broker fica de fato ativo o tempo todo, por isso aceitamos essa limitação do nosso modelo.
+
+* Como implementar as opções do administrador?
+
+    Inicialmente pensamos em criar um usuário especial que administraria o servidor por meio de um cliente. No entanto, inspirados pelos laboratórios anteriores, decidimos criar uma Thread específica para o Admin, com o seu comando exclusivo de criar novos tópicos. Para evitar problemas de race condition, utilizamos um Lock em todas as operações que envolvem escrita no dicionário que guarda os dados de usuários, tópicos e anúncios.
 
 ## Configuração e Execução
 
@@ -36,7 +43,8 @@ A aplicação utiliza a camada de middleware RPC (Remote Procedure Call) para a 
 
 Certifique-se de ter os seguintes requisitos instalados no seu sistema:
 
-- Python 3.10 or higher
+- Python 3.10 ou posterior
+- Para versões anteriores do Python (no mínimo 3.7) devem ser usados os arquivos `compatible_broker.py`e `compatible_publisher_subscriber.py`.
   
 ### Instalação
 
@@ -65,14 +73,14 @@ pip install -r requirements.txt
 ```
 
 ## Uso
-1. Inicie o servidor do sistema de anúncios distribuídos executando o arquivo server.py.
+1. Inicie o servidor do sistema de anúncios distribuídos executando o arquivo broker.py.
 ```bash
-python server.py
+python broker.py
 ```
 
-2. Execute o arquivo client.py para iniciar a interface do cliente no terminal.
+2. Execute o arquivo publisher_subscriber.py para iniciar a interface do cliente no terminal.
 ```bash
-python client.py
+python publisher_subscriber.py
 ```
 
 3. Utilize as opções do menu para interagir com o sistema de anúncios, como fazer login, criar anúncios, inscrever-se em tópicos e receber notificações.
