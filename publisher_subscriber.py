@@ -1,16 +1,27 @@
 import rpyc
 import json
-from broker import BrokerService, Content, Topic, UserId
+from broker import Topic, UserId
 
 class PublisherSubscriberService:
     def __init__(self):
         self.conn = rpyc.connect("localhost", 18861)
-        self.user_id = None
 
-    def login(self, user_id: UserId) -> bool:
-        self.user_id = user_id
-        return self.conn.root.login(user_id, self.callback)
+    def login(self):
+        self.user_id = input("Digite o seu login: ")
+        success = self.conn.root.login(self.user_id, self.callback)
+        if success:
+            print(f"Usuário {self.user_id} logado com sucesso.")
+        else:
+            print(f"Usuário {self.user_id} já está logado.")
 
+    def logout(self):
+        success = self.conn.root.logout(self.user_id)
+        if success:
+            print(f"Usuário {self.user_id} deslogado com sucesso.")
+        else:
+            print(f"Usuário {self.user_id} não está logado.")
+
+    #TODO mudar para ser usado só pelo admin
     def create_topic(self, topic_name: str) -> Topic:
         return self.conn.root.create_topic(self.user_id, topic_name)
 
@@ -18,13 +29,25 @@ class PublisherSubscriberService:
         return self.conn.root.list_topics()
 
     def publish(self, topic: Topic, data: str) -> bool:
-        return self.conn.root.publish(self.user_id, topic, data)
+        success = self.conn.root.publish(self.user_id, topic, data)
+        if success:
+            print(f"Mensagem publicada no tópico {topic}.")
+        else:
+            print(f"Tópico {topic} não existe.")
 
     def subscribe_to(self, topic: Topic) -> bool:
-        return self.conn.root.subscribe_to(self.user_id, topic)
+        success = self.conn.root.subscribe_to(self.user_id, topic)
+        if success:
+            print(f"Inscrição realizada no tópico {topic}.")
+        else:
+            print(f"Não foi possível se inscrever no tópico {topic}.")
 
     def unsubscribe_to(self, topic: Topic) -> bool:
-        return self.conn.root.unsubscribe_to(self.user_id, topic)
+        success = self.conn.root.unsubscribe_to(self.user_id, topic)
+        if success:
+            print(f"Inscrição removida do tópico {topic}.")
+        else:
+            print(f"Não foi possível cancelar a inscrição do tópico {topic}.")
 
     def callback(self, contents: list[str]) -> None:
         print(f"New contents in topic: {contents}")
@@ -34,24 +57,37 @@ class PublisherSubscriberService:
             print(content_new.get('author'))
             print(f"Um novo item publicado no tópico {content_new.get('topic')} por {content_new.get('author')}: {content_new.get('data')}")
 
+    def menu(self):
+        menu = ("Escolha uma opção.\n"
+                "1. Digite 'publicar' para publicar um tópico\n"
+                "2. Digite 'inscrever' para se inscrever em um tópico\n"
+                "3. Digite 'cancelar' para cancelar a inscrição em um tópico\n"
+                "4. Digite 'fim' para encerrar")
+        print(menu)
+
+    def main(self):
+        while True:
+            self.menu()
+            option = input().strip()
+
+            if option == "publicar":
+                topic = input("Digite o nome do tópico: ")
+                data = input("Digite o conteúdo do tópico: ")
+                self.publish(topic, data)
+            elif option == "inscrever":
+                topic = input("Digite o nome do tópico para se inscrever: ")
+                self.subscribe_to(topic)
+            elif option == "cancelar":
+                topic = input("Digite o nome do tópico para cancelar a inscrição: ")
+                self.unsubscribe_to(topic)
+            elif option == "fim":
+                self.conn.close()
+                break
+            else:
+                print("Comando inválido. Tente novamente.\n")
+
 if __name__ == "__main__":
     service = PublisherSubscriberService()
-    user_id = "user1"  # Replace with your user ID
-    service.login(user_id)
-
-    topic_name = "News"  # Replace with the desired topic name
-    service.create_topic(topic_name)
-
-    topics = service.list_topics()
-    print(f"Topics: {topics}")
-
-    topic = topics[0]
-    service.subscribe_to(topic)
-
-    data = "New article!"
-    service.publish(topic, data)
-
-    # Unsubscribe from the topic
-    service.unsubscribe_to(topic)
-
-    service.conn.close()
+    service.login()
+    service.main()
+    service.logout()
