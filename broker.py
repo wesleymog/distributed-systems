@@ -10,7 +10,7 @@ infos = {
 }
 
 class BrokerService(rpyc.Service):
-    def exposed_create_topic(self, id: UserId, topicname: str) -> Topic:
+    def create_topic(self, id: UserId, topicname: str) -> Topic:
         topic = Topic(topicname)
         infos["topics"].append({
             "id": topic,
