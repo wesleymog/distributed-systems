@@ -1,6 +1,8 @@
 import rpyc
 import json
 from broker import Topic, UserId
+from type_checking import UserId, Topic, Content, FnNotify
+
 
 class PublisherSubscriberService:
     def __init__(self):
@@ -15,13 +17,10 @@ class PublisherSubscriberService:
             print(f"Usuário {self.user_id} logado com sucesso.")
         else:
             print(f"Usuário {self.user_id} já está logado.")
+        return success
 
     def logout(self):
         success = self.conn.root.logout(self.user_id)
-        if success:
-            print(f"Usuário {self.user_id} deslogado com sucesso.")
-        else:
-            print(f"Usuário {self.user_id} não está logado.")
 
     #TODO mudar para ser usado só pelo admin
     def create_topic(self, topic_name: str) -> Topic:
@@ -51,9 +50,9 @@ class PublisherSubscriberService:
         else:
             print(f"Não foi possível cancelar a inscrição do tópico {topic}.")
 
-    def callback(self, message):
-        message_dict = json.loads(message)
-        print(f"Received message: {message_dict}")
+    def callback(self, contents: list[Content]):
+        for content in contents:
+            print(f"Nova mensagem no tópico {content.topic}: {content.data} postado por {content.author}")
     def menu(self):
         menu = ("Escolha uma opção.\n"
                 "1. Digite 'publicar' para publicar um tópico\n"
@@ -63,13 +62,20 @@ class PublisherSubscriberService:
         print(menu)
 
     def main(self):
-        while True:
+        isLogged = self.login()
+        while not isLogged:
+            print("Erro ao logar!\nTente novamente.")
+            isLogged = self.login()
+        while isLogged:
             self.menu()
             option = input().strip()
             if option == "criar":
                 topic_name = input("Digite o nome do tópico: ")
                 self.create_topic(topic_name)
-            if option == "publicar":
+            elif option == "topicos":
+                topicos = self.list_topics()
+                print(topicos)
+            elif option == "publicar":
                 topic = input("Digite o nome do tópico: ")
                 data = input("Digite o conteúdo do tópico: ")
                 self.publish(topic, data)
@@ -80,7 +86,8 @@ class PublisherSubscriberService:
                 topic = input("Digite o nome do tópico para cancelar a inscrição: ")
                 self.unsubscribe_to(topic)
             elif option == "fim":
-                self.conn.close()
+                logout = self.logout()
+                if logout: isLogged = False
                 break
             else:
                 print("Comando inválido. Tente novamente.\n")
@@ -89,5 +96,5 @@ class PublisherSubscriberService:
         
 if __name__ == "__main__":
     service = PublisherSubscriberService()
-    service.login()
+    #service.login()
     service.main()

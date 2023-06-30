@@ -63,9 +63,7 @@ class BrokerService(rpyc.Service):
             for subscriber in subscribers:
                 notify_callback = infos["users_logged"].get(str(subscriber))
                 if notify_callback:
-                    message = {"author": content.author, "topic": content.topic, "data": content.data}
-                    message_json = json.dumps(message)
-                    notify_callback(message_json)
+                    notify_callback([content])
         return True
 
     def exposed_subscribe_to(self, id: UserId, topic: Topic) -> bool:
