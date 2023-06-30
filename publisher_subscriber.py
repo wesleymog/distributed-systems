@@ -55,10 +55,11 @@ class PublisherSubscriberService:
             print(f"Nova mensagem no tópico {content.topic}: {content.data} postado por {content.author}")
     def menu(self):
         menu = ("Escolha uma opção.\n"
-                "1. Digite 'publicar' para publicar um tópico\n"
-                "2. Digite 'inscrever' para se inscrever em um tópico\n"
-                "3. Digite 'cancelar' para cancelar a inscrição em um tópico\n"
-                "4. Digite 'fim' para encerrar")
+                "1. Digite 'topicos' para listar os topicos\n"
+                "2. Digite 'publicar' para publicar um tópico\n"
+                "3. Digite 'inscrever' para se inscrever em um tópico\n"
+                "4. Digite 'cancelar' para cancelar a inscrição em um tópico\n"
+                "5. Digite 'fim' para encerrar")
         print(menu)
 
     def main(self):
