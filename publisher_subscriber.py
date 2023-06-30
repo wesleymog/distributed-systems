@@ -75,7 +75,7 @@ class PublisherSubscriberService:
                 self.create_topic(topic_name)
             elif option == "topicos":
                 topicos = self.list_topics()
-                print(topicos)
+                print(f"Os tópicos disponíveis são: {str(topicos)}")
             elif option == "publicar":
                 topic = input("Digite o nome do tópico: ")
                 data = input("Digite o conteúdo do tópico: ")
