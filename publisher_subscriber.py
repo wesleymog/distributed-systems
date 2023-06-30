@@ -4,12 +4,10 @@ from broker import Topic, UserId
 
 class PublisherSubscriberService:
     def __init__(self):
-        global bgsrv 
-        self.id = None 
-        self.conn = rpyc.connect("localhost", 18861) 
-        bgsrv = rpyc.BgServingThread(self.conn) 
-        self.broker = self.conn.root
-
+        global backgroundServingThread
+        self.conn = rpyc.connect("localhost", 18861)
+        backgroundServingThread = rpyc.BgServingThread(self.conn)
+        
     def login(self):
         self.user_id = input("Digite o seu login: ")
         success = self.conn.root.login(self.user_id, self.callback)
@@ -86,9 +84,10 @@ class PublisherSubscriberService:
                 break
             else:
                 print("Comando inválido. Tente novamente.\n")
-
+        backgroundServingThread.stop()
+        self.conn.close()
+        
 if __name__ == "__main__":
     service = PublisherSubscriberService()
     service.login()
     service.main()
-    service.logout()
