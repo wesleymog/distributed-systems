@@ -4,6 +4,8 @@ import rpyc
 from typing import Union
 import threading
 
+CONTENT_QUEUE_SIZE = 3
+
 infos_lock = threading.Lock()
 infos = {
     "users": [],
@@ -74,6 +76,10 @@ class BrokerService(rpyc.Service):
             users_subscribed = topic_info["users_subscribed"]
             users_logged_subscribed = [s for s in users_subscribed if str(s) in infos["users_logged"]]
             topic_info["contents"].append({"content":content, "users_viewed":users_logged_subscribed})
+            # Se passou do tamanho máximo, remove o anuncio mais antigo
+            if len(topic_info["contents"]) > CONTENT_QUEUE_SIZE:
+                topic_info["contents"].pop(0)
+
             subscribers = [s for s in topic_info["users_subscribed"]]
             if subscribers:
                 for subscriber in subscribers:
