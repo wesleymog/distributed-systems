@@ -1,7 +1,6 @@
 from type_checking import UserId, Topic, Content, FnNotify
 from rpyc.utils.server import ThreadedServer
 import rpyc
-from typing import Union
 import threading
 
 CONTENT_QUEUE_SIZE = 3
