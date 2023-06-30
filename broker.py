@@ -9,17 +9,17 @@ infos_lock = threading.Lock()
 infos = {
     "users": [],
     "topics": [{
-            "id": "test",
+            "id": "estagio",
             "contents": [],
             "users_subscribed": []
         },
         {
-            "id": "news",
+            "id": "IC",
             "contents": [],
             "users_subscribed": []
         },
         {
-            "id": "topic",
+            "id": "monitoria",
             "contents": [],
             "users_subscribed": []
         }],
