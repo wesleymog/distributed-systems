@@ -44,7 +44,7 @@ As principais questões que nos deparamos foram:
 Certifique-se de ter os seguintes requisitos instalados no seu sistema:
 
 - Python 3.10 ou posterior
-- Para versões anteriores do Python (no mínimo 3.7) devem ser usados os arquivos `compatible_broker.py`e `compatible_publisher_subscriber.py`.
+- Para versões anteriores do Python (no mínimo 3.7) devem ser usados os arquivos `compatible_broker.py` e `compatible_publisher_subscriber.py`.
   
 ### Instalação
 
