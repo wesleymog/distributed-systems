@@ -22,9 +22,16 @@ class PublisherSubscriberService:
     def logout(self):
         success = self.conn.root.logout(self.user_id)
 
-    #TODO mudar para ser usado só pelo admin
     def create_topic(self, topic_name: str) -> Topic:
-        return self.conn.root.create_topic(self.user_id, topic_name)
+        if self.user_id != "admin":
+            print("Você não tem permissão para criar um tópico.")
+        else:
+            topic = self.conn.root.create_topic(self.user_id, topic_name)
+            if topic:
+                print(f"Tópico {topic_name} criado com sucesso.")
+            else:
+                print(f"Não foi possível criar o tópico {topic_name}.")
+
 
     def list_topics(self) -> list[Topic]:
         return self.conn.root.list_topics()
@@ -60,6 +67,8 @@ class PublisherSubscriberService:
                 "3. Digite 'inscrever' para se inscrever em um tópico\n"
                 "4. Digite 'cancelar' para cancelar a inscrição em um tópico\n"
                 "5. Digite 'fim' para encerrar")
+        if self.user_id == "admin":
+            menu += "\n6. [ADMIN] Digite 'criar' para criar um tópico"
         print(menu)
 
     def main(self):
@@ -70,7 +79,9 @@ class PublisherSubscriberService:
         while isLogged:
             self.menu()
             option = input().strip()
-            if option == "criar":
+            if option == "criar" and self.user_id != "admin":
+                print("Você não tem permissão para criar um tópico.")
+            elif option == "criar":
                 topic_name = input("Digite o nome do tópico: ")
                 self.create_topic(topic_name)
             elif option == "topicos":

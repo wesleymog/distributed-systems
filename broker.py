@@ -1,6 +1,7 @@
 from type_checking import UserId, Topic, Content, FnNotify
 from rpyc.utils.server import ThreadedServer
 import rpyc
+from typing import Union
 import json
 
 infos = {
@@ -33,8 +34,11 @@ class BrokerService(rpyc.Service):
             "users_subscribed": []
         })
         return topic
-    def exposed_create_topic(self, id: UserId, topicname: str) -> Topic:
-        return self.create_topic(id, topicname)
+    
+    def exposed_create_topic(self, id: UserId, topicname: str) -> Union[Topic, None]:
+        if id == "admin":
+            return self.create_topic(id, topicname)
+        return None  
 
     def exposed_login(self, id: UserId, callback: FnNotify) -> bool:
         if id in infos["users_logged"].keys():
