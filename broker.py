@@ -40,6 +40,12 @@ class BrokerService(rpyc.Service):
         if id in infos["users_logged"].keys():
             return False
         infos["users_logged"][id]=callback
+        for topic_info in infos["topics"]:
+            if id in topic_info["users_subscribed"]:
+                for content_info in topic_info["contents"]:
+                    if id not in content_info["users_viewed"]:
+                        callback([content_info["content"]])
+                        content_info["users_viewed"].append(id)
         return True
 
     def exposed_logout(self, id: UserId) -> bool:
@@ -56,14 +62,16 @@ class BrokerService(rpyc.Service):
         if not topic_info:
             return False
         content = Content(author=id, topic=topic, data=data)
-        topic_info["contents"].append(content)
-
+        users_subscribed = topic_info["users_subscribed"]
+        users_logged_subscribed = [s for s in users_subscribed if str(s) in infos["users_logged"]]
+        topic_info["contents"].append({"content":content, "users_viewed":users_logged_subscribed})
         subscribers = [s for s in topic_info["users_subscribed"]]
         if subscribers:
             for subscriber in subscribers:
                 notify_callback = infos["users_logged"].get(str(subscriber))
                 if notify_callback:
                     notify_callback([content])
+        print(f'topic_info["contents"]: {topic_info["contents"]}')
         return True
 
     def exposed_subscribe_to(self, id: UserId, topic: Topic) -> bool:
