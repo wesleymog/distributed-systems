@@ -65,6 +65,9 @@ class BrokerService(rpyc.Service):
 
     def exposed_list_topics(self) -> list[Topic]:
         return [topic["id"] for topic in infos["topics"]]
+    
+    def exposed_list_subscribed_topics(self, id: UserId) -> list[Topic]:
+        return [topic["id"] for topic in infos["topics"] if id in topic["users_subscribed"]]
 
     def exposed_publish(self, id: UserId, topic: Topic, data: str) -> bool: 
         with infos_lock:
@@ -109,6 +112,7 @@ class BrokerService(rpyc.Service):
 if __name__ == "__main__":
     server = ThreadedServer(BrokerService, port=18861, protocol_config={'allow_public_attrs': True})
     requests_process = threading.Thread(target=server.start)
+    print("Iniciando servidor...")
     requests_process.start()
 
     while True:
@@ -121,14 +125,11 @@ if __name__ == "__main__":
             topicname = input("Digite o nome do tópico: ")
             admin_service = BrokerService()
             topic = admin_service.create_topic("admin", topicname)
-            if topic:
-                print(f"Tópico '{topicname}' criado com sucesso.")
-            else:
-                print(f"Erro ao criar tópico '{topicname}'.")
+            print(f"Tópico '{topicname}' criado com sucesso.\n")
         elif option == "parar":
             server.close()
             requests_process.join()
             break
         else:
-            print("Comando inválido. Tente novamente.")
+            print("Comando inválido. Tente novamente.\n")
 

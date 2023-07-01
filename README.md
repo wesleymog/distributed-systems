@@ -73,14 +73,14 @@ pip install -r requirements.txt
 ```
 
 ## Uso
-1. Inicie o servidor do sistema de anúncios distribuídos executando o arquivo broker.py.
+1. Inicie o servidor do sistema de anúncios distribuídos executando o arquivo server.py.
 ```bash
-python broker.py
+python server.py
 ```
 
-2. Execute o arquivo publisher_subscriber.py para iniciar a interface do cliente no terminal.
+2. Execute o arquivo client.py para iniciar a interface do cliente no terminal.
 ```bash
-python publisher_subscriber.py
+python client.py
 ```
 
 3. Utilize as opções do menu para interagir com o sistema de anúncios, como fazer login, criar anúncios, inscrever-se em tópicos e receber notificações.
