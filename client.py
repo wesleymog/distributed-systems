@@ -1,7 +1,6 @@
 import rpyc
-import json
-from server import Topic, UserId
-from type_checking import UserId, Topic, Content, FnNotify
+from server import Topic
+from type_checking import Topic, Content
 
 
 class PublisherSubscriberService:
